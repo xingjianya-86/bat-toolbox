@@ -23,8 +23,8 @@ const ASSET_BATCH = 30;
 const DEVICE_KEY = "sr.device.v1";
 const DEVICE_RETRY = 60 * 60 * 1000;
 const ASSETS_KEY = "sr.assets.v1";
-const ASSET_SIZE = 64;
-const ASSET_MAX_BYTES = 200 * 1024;
+const ASSET_SIZE = 48;
+const ASSET_MAX_BYTES = 50 * 1024;
 const ASSET_TOTAL_BYTES = 4 * 1024 * 1024;
 const ASSET_RETRY = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_DEVICE_PROFILE = {
@@ -894,7 +894,7 @@ function loadImageDataUrl(url) {
         ctx.drawImage(img, Math.round((ASSET_SIZE - width) / 2), Math.round((ASSET_SIZE - height) / 2), width, height);
         let data = "";
         try {
-          data = canvas.toDataURL("image/webp", 0.75);
+          data = canvas.toDataURL("image/webp", 0.65);
         } catch (err) {
           data = "";
         }
@@ -1895,6 +1895,15 @@ async function confirmAction(message) {
 async function ensureData() {
   const cache = await getCache();
   await loadAssets();
+  if (cache) {
+    const urls = collectAssetUrls(cache);
+    const uncached = urls.filter(function (url) {
+      return !(assetMemory && assetMemory.items && assetMemory.items[url]);
+    });
+    if (uncached.length > 0) {
+      setTimeout(function () { scheduleAssetCache(cache); }, 0);
+    }
+  }
   return cache;
 }
 
