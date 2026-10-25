@@ -250,17 +250,39 @@ Tapp.widgets["endgame"] = {
     ui.setText(root.querySelector("[data-gt-w-2x2-label-apocalyptic]"), ui.t("widget.endgame.apocalyptic"));
 
     const tabs = root.querySelectorAll("[data-gt-w-tab]");
-    tabs.forEach(function (tab) {
-      tab.addEventListener("click", function () {
+    // 委托绑定一次（root 在同一 iframe 的多次 render 间复用，
+    // 逐 tab addEventListener 会随 render 次数线性叠加）
+    if (!root.dataset.gtTabsBound) {
+      root.dataset.gtTabsBound = "1";
+      root.addEventListener("click", function (event) {
+        const tab = event.target && event.target.closest ? event.target.closest("[data-gt-w-tab]") : null;
+        if (!tab || !root.contains(tab)) return;
         const name = tab.getAttribute("data-gt-w-tab");
-        tabs.forEach(function (item) {
+        root.querySelectorAll("[data-gt-w-tab]").forEach(function (item) {
           item.classList.toggle("is-active", item === tab);
         });
         root.querySelectorAll("[data-gt-w-panel]").forEach(function (panel) {
           panel.hidden = panel.getAttribute("data-gt-w-panel") !== name;
         });
+        // 记住选择：宿主重挂载后恢复（写 private 不触发重挂载）
+        core.noteWidgetTab("endgame", name);
       });
-    });
+    }
+    // 恢复上次选择的 tab（重挂载后用户选的“虚构/混沌”不再被打回默认）
+    let activeTab = "";
+    try {
+      activeTab = await core.loadWidgetTab("endgame");
+    } catch (err) {
+      /* ignore */
+    }
+    if (activeTab && activeTab !== "moc") {
+      tabs.forEach(function (item) {
+        item.classList.toggle("is-active", item.getAttribute("data-gt-w-tab") === activeTab);
+      });
+      root.querySelectorAll("[data-gt-w-panel]").forEach(function (panel) {
+        panel.hidden = panel.getAttribute("data-gt-w-panel") !== activeTab;
+      });
+    }
 
     const moc = ui.pickMoc(cache, "1");
     const fiction = ui.pickFiction(cache);
